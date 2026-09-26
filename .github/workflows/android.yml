@@ -32,19 +32,3 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Distribute to Firebase App Distribution
-        env:
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          if [ -z "$FIREBASE_APP_ID" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "Firebase secrets are not configured; skipping distribution."
-            exit 0
-          fi
-          CREDENTIAL_FILE="$RUNNER_TEMP/firebase-service-account.json"
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$CREDENTIAL_FILE"
-          export GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIAL_FILE"
-          npx --yes firebase-tools appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk \
-            --app "$FIREBASE_APP_ID" \
-            --groups "field-testers" \
-            --release-notes "GitHub build $GITHUB_RUN_NUMBER"
