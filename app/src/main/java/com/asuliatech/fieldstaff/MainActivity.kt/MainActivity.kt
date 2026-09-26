@@ -1,5 +1,6 @@
 package com.asuliatech.fieldstaff
 
+import android.content.Context
 import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
@@ -12,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import java.util.Date
 
@@ -24,6 +26,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun InstallationApp() {
+  val context = LocalContext.current
+  val localReports = context.getSharedPreferences("field_staff_reports", Context.MODE_PRIVATE)
+  var savedReports by remember { mutableStateOf(localReports.getInt("saved_count", 0)) }
   var step by remember { mutableStateOf(1) }
   var school by remember { mutableStateOf("") }
   var contact by remember { mutableStateOf("") }
@@ -43,13 +48,10 @@ fun InstallationApp() {
     }
   }
 
-  Column(
-    Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState()),
-    verticalArrangement = Arrangement.spacedBy(12.dp)
-  ) {
+  Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Text("AsuliaTech", style = MaterialTheme.typography.headlineMedium)
     Text("New school installation", style = MaterialTheme.typography.titleLarge)
-    Text("Installation step " + step + " of 4", color = MaterialTheme.colorScheme.primary)
+    if (step <= 4) Text("Installation step " + step + " of 4", color = MaterialTheme.colorScheme.primary)
     HorizontalDivider()
     when (step) {
       1 -> {
@@ -65,27 +67,36 @@ fun InstallationApp() {
       }
       2 -> {
         Text("Activate all terminals", style = MaterialTheme.typography.titleMedium)
-        Text("Confirm that every physical terminal has been activated at the school.")
         terminals.forEachIndexed { index, item -> Card(Modifier.fillMaxWidth()) { Text("Terminal " + (index + 1) + " · Active", Modifier.padding(14.dp), color = MaterialTheme.colorScheme.primary) } }
         Button(onClick = { step = 3 }, modifier = Modifier.fillMaxWidth()) { Text("Start physical tests") }
       }
       3 -> {
         Text("Physical terminal test", style = MaterialTheme.typography.titleMedium)
         Text("Terminal " + (testIndex + 1) + ": " + terminals[testIndex])
-        Text("Make the parent call from this physical terminal. The app only records the result.")
         Row { Checkbox(parentCall, { parentCall = it }); Text("Parent call completed") }
         Row { Checkbox(voiceOk, { voiceOk = it }); Text("Voice clear on both sides") }
         OutlinedButton(onClick = { evidencePicker.launch("*/*") }, modifier = Modifier.fillMaxWidth()) { Text("Add photo or video evidence") }
         Text(if (evidence) evidenceDetail else "No photo/video selected", color = if (evidence) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Button(onClick = { if (testIndex + 1 < terminals.size) { testIndex++; parentCall = false; voiceOk = false; evidence = false; evidenceDetail = "" } else { step = 4 } }, enabled = parentCall && voiceOk && evidence, modifier = Modifier.fillMaxWidth()) { Text(if (testIndex + 1 < terminals.size) "Save and test next terminal" else "View installation report") }
       }
-      else -> {
+      4 -> {
         Text("Installation report", style = MaterialTheme.typography.titleMedium)
         Text(school + " · Contact: " + contact)
         Text("Total terminals: " + terminals.size + " · Activated: " + terminals.size + " · Tested: " + terminals.size)
         Text("Evidence: Complete", color = MaterialTheme.colorScheme.primary)
         terminals.forEachIndexed { index, item -> Text("✓ Terminal " + (index + 1) + ": " + item) }
-        Button(onClick = { step = 1 }, modifier = Modifier.fillMaxWidth()) { Text("Submit installation") }
+        Button(onClick = {
+          val report = school + " | " + contact + " | terminals=" + terminals.size + " | saved=" + DateFormat.format("dd MMM yyyy, hh:mm a", Date())
+          localReports.edit().putString("latest_report", report).putInt("saved_count", savedReports + 1).apply()
+          savedReports++
+          step = 5
+        }, modifier = Modifier.fillMaxWidth()) { Text("Save report offline") }
+      }
+      else -> {
+        Text("Report saved on this phone", style = MaterialTheme.typography.titleMedium)
+        Text("This report is safe offline and can be synced when internet is available.")
+        Text("Offline reports saved: " + savedReports, color = MaterialTheme.colorScheme.primary)
+        Button(onClick = { step = 1; school = ""; contact = ""; terminals = emptyList(); testIndex = 0 }, modifier = Modifier.fillMaxWidth()) { Text("Start new installation") }
       }
     }
   }
