@@ -1,103 +1,19 @@
 package com.asuliatech.fieldstaff
-
-import android.content.Context
 import android.os.Bundle
-import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import java.util.Date
 
-class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContent { MaterialTheme { InstallationApp() } }
-  }
-}
-
-@Composable
-fun InstallationApp() {
-  val context = LocalContext.current
-  val localReports = context.getSharedPreferences("field_staff_reports", Context.MODE_PRIVATE)
-  var savedReports by remember { mutableStateOf(localReports.getInt("saved_count", 0)) }
-  var step by remember { mutableStateOf(1) }
-  var school by remember { mutableStateOf("") }
-  var contact by remember { mutableStateOf("") }
-  var terminal by remember { mutableStateOf("") }
-  var imei by remember { mutableStateOf("") }
-  var sim by remember { mutableStateOf("") }
-  var terminals by remember { mutableStateOf(listOf<String>()) }
-  var testIndex by remember { mutableStateOf(0) }
-  var parentCall by remember { mutableStateOf(false) }
-  var voiceOk by remember { mutableStateOf(false) }
-  var evidence by remember { mutableStateOf(false) }
-  var evidenceDetail by remember { mutableStateOf("") }
-  val evidencePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-    if (uri != null) {
-      evidence = true
-      evidenceDetail = "Evidence selected · " + DateFormat.format("dd MMM, hh:mm a", Date())
-    }
-  }
-
-  Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    Text("AsuliaTech", style = MaterialTheme.typography.headlineMedium)
-    Text("New school installation", style = MaterialTheme.typography.titleLarge)
-    if (step <= 4) Text("Installation step " + step + " of 4", color = MaterialTheme.colorScheme.primary)
-    HorizontalDivider()
-    when (step) {
-      1 -> {
-        Text("School and terminals", style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(school, { school = it }, label = { Text("School name") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(contact, { contact = it }, label = { Text("Contact person") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(terminal, { terminal = it }, label = { Text("Terminal ID") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(imei, { imei = it.take(6) }, label = { Text("IMEI last 6 digits") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(sim, { sim = it.take(6) }, label = { Text("SIM last 6 digits") }, modifier = Modifier.fillMaxWidth())
-        Button(onClick = { terminals = terminals + (terminal + " · IMEI " + imei + " · SIM " + sim); terminal = ""; imei = ""; sim = "" }, enabled = terminal.isNotBlank() && imei.length == 6 && sim.length == 6, modifier = Modifier.fillMaxWidth()) { Text("+ Add another terminal") }
-        terminals.forEachIndexed { index, item -> Text("Terminal " + (index + 1) + ": " + item + " · Pending activation") }
-        Button(onClick = { step = 2 }, enabled = school.isNotBlank() && contact.isNotBlank() && terminals.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Continue to activation") }
-      }
-      2 -> {
-        Text("Activate all terminals", style = MaterialTheme.typography.titleMedium)
-        terminals.forEachIndexed { index, item -> Card(Modifier.fillMaxWidth()) { Text("Terminal " + (index + 1) + " · Active", Modifier.padding(14.dp), color = MaterialTheme.colorScheme.primary) } }
-        Button(onClick = { step = 3 }, modifier = Modifier.fillMaxWidth()) { Text("Start physical tests") }
-      }
-      3 -> {
-        Text("Physical terminal test", style = MaterialTheme.typography.titleMedium)
-        Text("Terminal " + (testIndex + 1) + ": " + terminals[testIndex])
-        Row { Checkbox(parentCall, { parentCall = it }); Text("Parent call completed") }
-        Row { Checkbox(voiceOk, { voiceOk = it }); Text("Voice clear on both sides") }
-        OutlinedButton(onClick = { evidencePicker.launch("*/*") }, modifier = Modifier.fillMaxWidth()) { Text("Add photo or video evidence") }
-        Text(if (evidence) evidenceDetail else "No photo/video selected", color = if (evidence) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = { if (testIndex + 1 < terminals.size) { testIndex++; parentCall = false; voiceOk = false; evidence = false; evidenceDetail = "" } else { step = 4 } }, enabled = parentCall && voiceOk && evidence, modifier = Modifier.fillMaxWidth()) { Text(if (testIndex + 1 < terminals.size) "Save and test next terminal" else "View installation report") }
-      }
-      4 -> {
-        Text("Installation report", style = MaterialTheme.typography.titleMedium)
-        Text(school + " · Contact: " + contact)
-        Text("Total terminals: " + terminals.size + " · Activated: " + terminals.size + " · Tested: " + terminals.size)
-        Text("Evidence: Complete", color = MaterialTheme.colorScheme.primary)
-        terminals.forEachIndexed { index, item -> Text("✓ Terminal " + (index + 1) + ": " + item) }
-        Button(onClick = {
-          val report = school + " | " + contact + " | terminals=" + terminals.size + " | saved=" + DateFormat.format("dd MMM yyyy, hh:mm a", Date())
-          localReports.edit().putString("latest_report", report).putInt("saved_count", savedReports + 1).apply()
-          savedReports++
-          step = 5
-        }, modifier = Modifier.fillMaxWidth()) { Text("Save report offline") }
-      }
-      else -> {
-        Text("Report saved on this phone", style = MaterialTheme.typography.titleMedium)
-        Text("This report is safe offline and can be synced when internet is available.")
-        Text("Offline reports saved: " + savedReports, color = MaterialTheme.colorScheme.primary)
-        Button(onClick = { step = 1; school = ""; contact = ""; terminals = emptyList(); testIndex = 0 }, modifier = Modifier.fillMaxWidth()) { Text("Start new installation") }
-      }
-    }
-  }
-}
+class MainActivity: ComponentActivity(){override fun onCreate(s:Bundle?){super.onCreate(s);setContent{MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF008C8C))){App()}}}
+@Composable fun App(){var login by remember{mutableStateOf(false)};if(!login)Login{login=true}else Install()}
+@Composable fun Login(done:()->Unit){var u by remember{mutableStateOf("")};var p by remember{mutableStateOf("")};Surface(color=Color(0xFFF4FBFB)){Column(Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(14.dp)){Spacer(Modifier.height(26.dp));Text("A  AsuliaTech",style=MaterialTheme.typography.headlineLarge,color=Color(0xFF062747));Text("Connect  |  Secure  |  Safer Students");Text("Field Staff App",style=MaterialTheme.typography.headlineMedium);Text("On-Ground Service for Safer Schools");Row(horizontalArrangement=Arrangement.spacedBy(18.dp)){Text("🛡 Install");Text("🛠 Service");Text("📄 Report");Text("☎ Verify")};Card{Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){OutlinedTextField(u,{u=it},label={Text("Username")},placeholder={Text("Enter your username")},modifier=Modifier.fillMaxWidth());OutlinedTextField(p,{p=it},label={Text("Password")},placeholder={Text("Enter your password")},visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());Button(onClick=done,modifier=Modifier.fillMaxWidth()){Text("Login  →")};Text("Forgot Password?",color=Color(0xFF008C8C),modifier=Modifier.align(Alignment.End))}};Spacer(Modifier.height(20.dp));Text("“Real Work, Safer Students”",style=MaterialTheme.typography.titleLarge,color=Color(0xFF006F70));Text("On-Site Support  •  Trusted by Schools  •  Real Reports")}}}
+@Composable fun Install(){var step by remember{mutableStateOf(1)};var school by remember{mutableStateOf("")};var terminal by remember{mutableStateOf("")};var list by remember{mutableStateOf(listOf<String>())};Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){Text("AsuliaTech Field Staff",style=MaterialTheme.typography.headlineSmall,color=Color(0xFF006F70));LinearProgressIndicator(progress={step/5f},modifier=Modifier.fillMaxWidth());Text("New Installation • Step "+step+" of 5");when(step){1->{Card{Column(Modifier.padding(16.dp)){Text("School Details",style=MaterialTheme.typography.titleLarge);OutlinedTextField(school,{school=it},label={Text("School name")},modifier=Modifier.fillMaxWidth());Button(onClick={step=2},enabled=school.isNotBlank()){Text("Next")}}}};2->{Card{Column(Modifier.padding(16.dp)){Text("Terminal Details",style=MaterialTheme.typography.titleLarge);OutlinedTextField(terminal,{terminal=it},label={Text("Terminal ID")},modifier=Modifier.fillMaxWidth());OutlinedTextField("",{},label={Text("IMEI last 6 digits")},modifier=Modifier.fillMaxWidth());OutlinedTextField("",{},label={Text("SIM last 6 digits")},modifier=Modifier.fillMaxWidth());Button(onClick={list=list+terminal;step=3},enabled=terminal.isNotBlank()){Text("Activate terminal")}}}};3->{Card{Column(Modifier.padding(16.dp)){Text("Activate Terminal",style=MaterialTheme.typography.titleLarge);Text("✓ Terminal activated successfully",color=Color(0xFF008C50));Button(onClick={step=4}){Text("Physical test call")}}}};4->{Card{Column(Modifier.padding(16.dp)){Text("Physical Test Call",style=MaterialTheme.typography.titleLarge);Text("Call from physical terminal, not from app");Text("☑ Parent call tested\n☑ Voice clear both sides\n☑ Evidence with GPS and time");Button(onClick={step=5}){Text("Attach photo / video")}}}};else->{Card{Column(Modifier.padding(16.dp)){Text("Installation Report",style=MaterialTheme.typography.titleLarge);Text(school+" • "+list.size+" terminal(s)");Text("✓ Submitted successfully",color=Color(0xFF008C50));Button(onClick={step=1;school="";list=emptyList()}){Text("Back to home")}}}}}}}
