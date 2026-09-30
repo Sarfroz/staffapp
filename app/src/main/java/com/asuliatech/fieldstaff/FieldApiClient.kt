@@ -126,6 +126,7 @@ object FieldApiClient {
                     append("&imei=").append(URLEncoder.encode(imei.trim(), "UTF-8"))
                     append("&sim=").append(URLEncoder.encode(sim.trim(), "UTF-8"))
                     append("&pin=").append(URLEncoder.encode(secretPin.trim(), "UTF-8"))
+                    append("&secret_pin=").append(URLEncoder.encode(secretPin.trim(), "UTF-8"))
                 }
 
                 OutputStreamWriter(conn.outputStream).use { it.write(postData) }
