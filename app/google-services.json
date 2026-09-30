@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1082410851955",
+    "project_id": "asuliatech-field-staff",
+    "storage_bucket": "asuliatech-field-staff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082410851955:android:2982998b6fdfa547ddd406",
+        "android_client_info": {
+          "package_name": "com.asuliatech.fieldstaff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8G9yMupQmbRgGyikE7Ve9sfAq3Y-iXQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
